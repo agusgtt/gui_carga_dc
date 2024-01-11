@@ -37,7 +37,7 @@
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_7">
        <item>
-        <widget class="QLabel" name="label_2">
+        <widget class="QLabel" name="label_6">
          <property name="maximumSize">
           <size>
            <width>250</width>
@@ -48,7 +48,7 @@
           <string/>
          </property>
          <property name="pixmap">
-          <pixmap>../../Desktop/UTN-Paraná.png</pixmap>
+          <pixmap resource="logo_utn.qrc">:/new/imagen/UTN_Parana.png</pixmap>
          </property>
          <property name="scaledContents">
           <bool>true</bool>
@@ -236,18 +236,8 @@
           <enum>QAbstractItemView::SelectRows</enum>
          </property>
          <property name="rowCount">
-          <number>10</number>
+          <number>0</number>
          </property>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
          <column>
           <property name="text">
            <string>Mode</string>
@@ -295,7 +285,21 @@
         </widget>
        </item>
        <item>
-        <spacer name="horizontalSpacer_2">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Duracion:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>00:00</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
@@ -335,7 +339,9 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <resources/>
+ <resources>
+  <include location="logo_utn.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>comboBox_modo</sender>
@@ -385,11 +391,129 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>lineEdit_input_time</sender>
+   <signal>editingFinished()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot_validate_time()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>255</x>
+     <y>139</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>282</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>comboBox_modo</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot_validate_val()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>173</x>
+     <y>139</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>282</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_del</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot_delete()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>504</x>
+     <y>139</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>282</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>tableWidget</sender>
+   <signal>itemSelectionChanged()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot_cambio_select()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>282</x>
+     <y>340</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>282</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_delete_all</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot_delete_all()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>58</x>
+     <y>539</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>282</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_run</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot_run()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>419</x>
+     <y>539</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>282</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_stop</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot_stop()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>505</x>
+     <y>539</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>282</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>slot_Update_unit(int)</slot>
   <slot>slot_start_running()</slot>
   <slot>slot_add()</slot>
   <slot>slot_validate_val()</slot>
+  <slot>slot_validate_time()</slot>
+  <slot>slot_delete()</slot>
+  <slot>slot_cambio_select()</slot>
+  <slot>slot_delete_all()</slot>
+  <slot>slot_run()</slot>
+  <slot>slot_stop()</slot>
  </slots>
 </ui>

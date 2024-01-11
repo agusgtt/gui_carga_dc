@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/new/imagen">
+        <file>UTN_Parana.png</file>
+    </qresource>
+</RCC>

@@ -6,11 +6,53 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     Cont_Items=0;
+    Selected_row=-1;
+    total_time_s=0;
+    Cont_timer_1seg=0;
+    remaining_time_s=0;
+    tabla_clean=true;
+    Cont_request=0;
+
     ui->setupUi(this);
+    timer_100_ms = new QTimer(this);
+    timer_100_ms->setInterval(100);//seteado en 100ms
+    connect(timer_100_ms, &QTimer::timeout, this, &MainWindow::slot_manejo_timer_100ms);
+}
+
+void MainWindow::Iniciar_tarea(int tarea)
+{
+    if((uint)tarea<Cont_Items){
+        for(int i=0; i<5;i++){
+            ui->tableWidget->item(tarea,i)->setBackground(QColor(243, 220, 25));//el gris es 245/245/245
+
+        }
+        if(ui->tableWidget->item(tarea,4)->text()=="[min]"){
+            Cont_tarea_actual=60*ui->tableWidget->item(tarea,3)->text().toInt();// ojo que sea la columna correcta
+        }else{
+            Cont_tarea_actual=ui->tableWidget->item(tarea,3)->text().toInt();
+        }
+        tabla_clean=false;
+        //enviar config al micro
+    }
+}
+
+void MainWindow::LimpiarColor()
+{
+    for(int i=0; i<5;i++){
+        for(uint j=0; j<Cont_Items;j++){
+            if(j%2==1){
+                ui->tableWidget->item(j,i)->setBackground(QColor(245, 245, 245));//el gris es 245/245/245
+            }else{
+                ui->tableWidget->item(j,i)->setBackground(QColor(255, 255, 255));//el gris es 245/245/245
+            }
+        }
+    }
 }
 
 MainWindow::~MainWindow()
 {
+    timer_100_ms->stop();
+    delete timer_100_ms;
     delete ui;
 }
 
@@ -29,6 +71,10 @@ void MainWindow::slot_Update_unit(int dato)
 
 void MainWindow::slot_add()
 {
+    if(!tabla_clean){
+        LimpiarColor();
+        tabla_clean=true;
+    }
     //leemos los datos
     int modo= ui->comboBox_modo->currentIndex();//0 para CC/1 para CP/2 para CR
     QString input=ui->lineEdit_input_val->text();
@@ -37,24 +83,69 @@ void MainWindow::slot_add()
     int unit_time=ui->comboBox_time_unit->currentIndex();//0 para seg/1 para min
 
     if(Cont_Items<10 && (input.toFloat()>0) && (time.toFloat()>0)){
+        //añadimos un renglon
+        ui->tableWidget->insertRow(Cont_Items);
+
         //cargamos en la tabla
-        if(modo==0){
-            ui->tableWidget->setItem(Cont_Items,0,new QTableWidgetItem(CC));
-        }else if(modo==1){
-            ui->tableWidget->setItem(Cont_Items,0,new QTableWidgetItem(CP));
-        }else if(modo==2){
-            ui->tableWidget->setItem(Cont_Items,0,new QTableWidgetItem(CR));
-        }
+        if(modo==0) ui->tableWidget->setItem(Cont_Items,0,new QTableWidgetItem(CC));
+        else if(modo==1) ui->tableWidget->setItem(Cont_Items,0,new QTableWidgetItem(CP));
+        else if(modo==2) ui->tableWidget->setItem(Cont_Items,0,new QTableWidgetItem(CR));
+
         ui->tableWidget->setItem(Cont_Items,1,new QTableWidgetItem(input));
         ui->tableWidget->setItem(Cont_Items,2,new QTableWidgetItem(unit_input));
         ui->tableWidget->setItem(Cont_Items,3,new QTableWidgetItem(time));
+
         if(unit_time==0){
             ui->tableWidget->setItem(Cont_Items,4,new QTableWidgetItem("[seg]"));
+            total_time_s=total_time_s+time.toUInt();
         }else{
             ui->tableWidget->setItem(Cont_Items,4,new QTableWidgetItem("[min]"));
+            total_time_s=total_time_s+60*time.toUInt();
         }
         Cont_Items++;
     }
+    ui->label_7->setText(QString::number(total_time_s));
+}
+
+void MainWindow::slot_delete()
+{
+//hay dos casos, que este seleccionado un renglon y se borre ese
+//o que se borre el ultimo elemento de la lista
+//int selectedRow = ui->tableWidget->currentRow();
+    if(!tabla_clean){
+        LimpiarColor();
+        tabla_clean=true;
+    }
+
+    bool remove_ok = false;
+    QString time;
+    QString time_unit;
+    if(Selected_row>=0){//&& selectedRow<Cont_Items
+        time=ui->tableWidget->item(Selected_row,3)->text();
+        time_unit=ui->tableWidget->item(Selected_row,4)->text();
+        ui->tableWidget->removeRow(Selected_row);
+        ui->tableWidget->selectRow(-1);
+        ui->tableWidget->clearSelection();
+        Cont_Items--;
+        Selected_row=-1;
+        remove_ok=true;
+    }
+    else if(Cont_Items>0){
+        Cont_Items--;
+        time=ui->tableWidget->item(Cont_Items,3)->text();
+        time_unit=ui->tableWidget->item(Cont_Items,4)->text();
+        ui->tableWidget->removeRow(Cont_Items);
+        remove_ok=true;
+    }
+    if(remove_ok){
+        if(time_unit=="[seg]"){
+            total_time_s=total_time_s-time.toUInt();
+        }else if(time_unit=="[min]"){
+            total_time_s=total_time_s-60*time.toUInt();
+        }
+
+    }
+    ui->label_7->setText(QString::number(total_time_s));
 }
 
 void MainWindow::slot_validate_val()
@@ -64,7 +155,7 @@ void MainWindow::slot_validate_val()
     bool dato_valido;
     dato_float=ui->lineEdit_input_val->text().toFloat(&dato_valido);
     modo_str=ui->label_input_val->text();
-    if(dato_valido){
+    if(dato_valido && dato_float>=0){
         if(modo_str=="[A]" && dato_float>20){
             ui->lineEdit_input_val->setText("");
         }else if(modo_str=="[W]" && dato_float>150){
@@ -74,6 +165,117 @@ void MainWindow::slot_validate_val()
         }
     }else{
          ui->lineEdit_input_val->setText("");
+    }
+}
+
+void MainWindow::slot_validate_time()
+{
+    float dato_int;
+    bool dato_valido;
+    dato_int=ui->lineEdit_input_time->text().toInt(&dato_valido);
+
+    if(!dato_valido || (dato_int>200) || (dato_int<=0)){
+       ui->lineEdit_input_time->setText("");
+    }
+}
+
+void MainWindow::slot_cambio_select()
+{
+int selectedRow = ui->tableWidget->currentRow();
+    Selected_row=selectedRow;
+}
+
+void MainWindow::slot_delete_all()
+{
+    while(Cont_Items>0){
+        Cont_Items--;
+        ui->tableWidget->removeRow(Cont_Items);
+    }
+    total_time_s=0;
+    ui->label_7->setText(QString::number(total_time_s));
+}
+
+void MainWindow::slot_run()
+{
+    if(!tabla_clean){
+        LimpiarColor();
+        tabla_clean=true;
+    }
+    if(Cont_Items>0){//Si no hay items no permite ejecutar
+        ui->pushButton_add->setEnabled(false);
+        ui->pushButton_del->setEnabled(false);
+        ui->pushButton_delete_all->setEnabled(false);
+        ui->pushButton_run->setEnabled(false);
+        ui->checkBox_almacenar->setEnabled(false);
+
+        //start timer global
+        remaining_time_s=total_time_s;
+        ui->label_7->setText(QString::number(remaining_time_s));
+        timer_100_ms->start();
+        Tarea_actual=0;
+        Iniciar_tarea(Tarea_actual);
+    }
+
+}
+
+void MainWindow::slot_stop()
+{
+    ui->pushButton_add->setEnabled(true);
+    ui->pushButton_del->setEnabled(true);
+    ui->pushButton_delete_all->setEnabled(true);
+    ui->pushButton_run->setEnabled(true);
+    ui->checkBox_almacenar->setEnabled(true);
+    timer_100_ms->stop();
+    Cont_timer_1seg=0;
+    if(remaining_time_s==0){
+        ui->label_7->setText("Fin");
+    }
+    //while quita el color//245/245/245 para el gris
+
+}
+
+void MainWindow::slot_manejo_timer_100ms()
+{
+    Cont_timer_1seg++;
+    Cont_request++;
+    if(Cont_timer_1seg>9){//paso 1 segundo
+        //update contadores
+        remaining_time_s--;
+        if(Cont_tarea_actual>0){
+            Cont_tarea_actual--;
+        }
+        Cont_timer_1seg=0;
+        //update display
+        ui->label_7->setText(QString::number(remaining_time_s));
+        //Control timer global
+        if(remaining_time_s==0){
+            slot_stop();
+            LimpiarColor();
+            tabla_clean=true;
+        }
+        //control timer task
+        if(Cont_tarea_actual<=0 && Tarea_actual<(Cont_Items-1)){
+            for(int i=0; i<5;i++){
+                ui->tableWidget->item(Tarea_actual,i)->setBackground(QColor(148, 255, 58));//el gris es 245/245/245
+
+            }
+            tabla_clean=false;
+            Tarea_actual++;
+            Iniciar_tarea(Tarea_actual);
+        }
+
+
+
+
+
+
+        //ya termino la task?
+    }
+
+    //pedir dato al micro
+    if(Cont_request>5){//cada 500 ms va a pedir datos del micro, el 5 cambia por
+        //pedir dato al micro
+        Cont_request=0;
     }
 }
 
