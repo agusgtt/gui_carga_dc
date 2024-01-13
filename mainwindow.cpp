@@ -13,11 +13,49 @@ MainWindow::MainWindow(QWidget *parent)
     tabla_clean=true;
     Cont_request=0;
 
+    PuertoUSB = new QSerialPort(this);
+    PuertoUSB->setPortName("COM4"); // Cambia "COMx" por el nombre del puerto serial real
+    PuertoUSB->setBaudRate(QSerialPort::Baud9600);
+    PuertoUSB->setDataBits(QSerialPort::Data8);
+    PuertoUSB->setParity(QSerialPort::NoParity);
+    PuertoUSB->setStopBits(QSerialPort::OneStop);
+
+    abrirUSB();
+
     ui->setupUi(this);
     timer_100_ms = new QTimer(this);
     timer_100_ms->setInterval(100);//seteado en 100ms
     connect(timer_100_ms, &QTimer::timeout, this, &MainWindow::slot_manejo_timer_100ms);
 }
+
+void MainWindow::abrirUSB()
+{
+    if (PuertoUSB->open(QIODevice::ReadWrite)) {
+        // El puerto serial está abierto
+        connect(PuertoUSB, &QSerialPort::readyRead, this, &MainWindow::leerDatosSerial);
+    } else {
+        // Error al abrir el puerto serial
+        qDebug() << "Error al abrir el puerto serial: " << PuertoUSB->errorString();
+    }
+}
+
+void MainWindow::cerrarUSB()
+{
+    if (PuertoUSB->isOpen()) {
+        // Desconectar la señal readyRead antes de cerrar el puerto
+        disconnect(PuertoUSB, &QSerialPort::readyRead, this, &MainWindow::leerDatosSerial);
+
+        // Cerrar el puerto serial
+        PuertoUSB->close();
+    }
+}
+
+void MainWindow::leerDatosSerial()
+{
+    QByteArray datos = PuertoUSB->readAll();
+    qDebug()<<"Input usb: "<<datos;
+}
+
 
 void MainWindow::Iniciar_tarea(int tarea)
 {

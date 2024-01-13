@@ -3,6 +3,10 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QSerialPort>
+#include <QSerialPortInfo>
+#include <QDebug>
+
 #define CC "C.Current"
 #define CP "C.Power"
 #define CR "C.Resist."
@@ -23,16 +27,28 @@ public:
     uint Tarea_actual;
     uint Cont_tarea_actual;
     int Selected_row;
+    bool tabla_clean;
+
+    //banderas control de flujo
+    bool disp_ready;
+    bool disp_conectado;
+
+    //com serie
+    QSerialPort *PuertoUSB;
+    void abrirUSB();
+    void cerrarUSB();
+    void leerDatosSerial();
+
+    //timer
+    QTimer *timer_100_ms;
+    void Iniciar_tarea(int tarea);
+    void LimpiarColor();
+
+    //contadores tareas
     uint total_time_s;//acumulador de las tareas
     uint remaining_time_s;//cont global de stop
     uint Cont_timer_1seg;//timer del reloj
     uint Cont_request;//contador para pedir al micro
-    bool tabla_clean;
-
-
-    QTimer *timer_100_ms;
-    void Iniciar_tarea(int tarea);
-    void LimpiarColor();
 
     ~MainWindow();
 
