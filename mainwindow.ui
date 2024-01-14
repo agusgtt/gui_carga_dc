@@ -88,9 +88,9 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label">
+             <widget class="QLabel" name="label_status">
               <property name="text">
-               <string>Conectado</string>
+               <string>No Detectado</string>
               </property>
              </widget>
             </item>
@@ -320,6 +320,9 @@
        </item>
        <item>
         <widget class="QPushButton" name="pushButton_run">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Run</string>
          </property>

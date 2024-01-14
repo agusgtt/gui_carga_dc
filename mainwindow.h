@@ -31,18 +31,24 @@ public:
 
     //banderas control de flujo
     bool disp_ready;
+    bool disp_detectado;
     bool disp_conectado;
+    bool band_run;
 
     //com serie
     QSerialPort *PuertoUSB;
-    void abrirUSB();
+    void abrirUSB(QString Puerto_com);
     void cerrarUSB();
     void leerDatosSerial();
-
+    void encontrarDispositivoUSB();
+    QString buscarpuerto(const int idVendedor,const int idProducto);
+    QString idPuerto;
     //timer
     QTimer *timer_100_ms;
     void Iniciar_tarea(int tarea);
     void LimpiarColor();
+    const int idVendedor = 1155;
+    const int idProducto = 22336;
 
     //contadores tareas
     uint total_time_s;//acumulador de las tareas
@@ -66,6 +72,7 @@ public slots:
     void slot_run();
     void slot_stop();
     void slot_manejo_timer_100ms();
+    void ErrorUSB();
 
 
 };

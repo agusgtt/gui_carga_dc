@@ -14,28 +14,39 @@ MainWindow::MainWindow(QWidget *parent)
     Cont_request=0;
 
     PuertoUSB = new QSerialPort(this);
-    PuertoUSB->setPortName("COM4"); // Cambia "COMx" por el nombre del puerto serial real
+    //PuertoUSB->setPortName("COM4"); // Cambia "COMx" por el nombre del puerto serial real
     PuertoUSB->setBaudRate(QSerialPort::Baud9600);
     PuertoUSB->setDataBits(QSerialPort::Data8);
     PuertoUSB->setParity(QSerialPort::NoParity);
     PuertoUSB->setStopBits(QSerialPort::OneStop);
 
-    abrirUSB();
+    disp_ready=false;
+    disp_detectado=false;
+    disp_conectado=false;
+    band_run=false;
 
+
+    //encontrarDispositivoUSB();
+    //abrirUSB();//mover al timer
     ui->setupUi(this);
     timer_100_ms = new QTimer(this);
     timer_100_ms->setInterval(100);//seteado en 100ms
     connect(timer_100_ms, &QTimer::timeout, this, &MainWindow::slot_manejo_timer_100ms);
+    connect(PuertoUSB, &QSerialPort::errorOccurred, this, &MainWindow::ErrorUSB);
+    timer_100_ms->start();
 }
 
-void MainWindow::abrirUSB()
+void MainWindow::abrirUSB(QString Puerto_com)
 {
+    PuertoUSB->setPortName(Puerto_com);
     if (PuertoUSB->open(QIODevice::ReadWrite)) {
         // El puerto serial está abierto
         connect(PuertoUSB, &QSerialPort::readyRead, this, &MainWindow::leerDatosSerial);
+        disp_conectado=true;
     } else {
         // Error al abrir el puerto serial
-        qDebug() << "Error al abrir el puerto serial: " << PuertoUSB->errorString();
+        disp_detectado=false;
+        qDebug() << "abrirUSB():Error al abrir el puerto serial: " << PuertoUSB->errorString();
     }
 }
 
@@ -54,6 +65,36 @@ void MainWindow::leerDatosSerial()
 {
     QByteArray datos = PuertoUSB->readAll();
     qDebug()<<"Input usb: "<<datos;
+}
+
+void MainWindow::encontrarDispositivoUSB()
+{
+    QList<QSerialPortInfo> listaPuertos = QSerialPortInfo::availablePorts();
+
+    qDebug() << "Dispositivos USB disponibles:";
+
+    for (const QSerialPortInfo &info : listaPuertos) {
+        qDebug() << "Puerto: " << info.portName();
+        qDebug() << "Descripción: " << info.description();
+                                       qDebug() << "Fabricante: " << info.manufacturer();
+        qDebug() << "ID de producto: " << info.productIdentifier();
+        qDebug() << "ID de vendedor: " << info.vendorIdentifier();
+        qDebug() << "--------------------------------";
+    }
+}
+
+QString MainWindow::buscarpuerto(const int idVendedor,const int idProducto)
+{
+    QList<QSerialPortInfo> listaPuertos = QSerialPortInfo::availablePorts();
+
+    for (const QSerialPortInfo &info : listaPuertos) {
+        if (info.vendorIdentifier() == idVendedor && info.productIdentifier() == idProducto) {
+            // Se encontro el dispositivo, devolver el nombre del puerto
+            return info.portName();
+        }
+    }
+    // Si no se encuentra el dispositivo, devolver una cadena vacía
+    return QString();
 }
 
 
@@ -89,6 +130,7 @@ void MainWindow::LimpiarColor()
 
 MainWindow::~MainWindow()
 {
+    cerrarUSB();
     timer_100_ms->stop();
     delete timer_100_ms;
     delete ui;
@@ -249,7 +291,8 @@ void MainWindow::slot_run()
         //start timer global
         remaining_time_s=total_time_s;
         ui->label_7->setText(QString::number(remaining_time_s));
-        timer_100_ms->start();
+        //timer_100_ms->start();
+        band_run=true;
         Tarea_actual=0;
         Iniciar_tarea(Tarea_actual);
     }
@@ -263,8 +306,9 @@ void MainWindow::slot_stop()
     ui->pushButton_delete_all->setEnabled(true);
     ui->pushButton_run->setEnabled(true);
     ui->checkBox_almacenar->setEnabled(true);
-    timer_100_ms->stop();
+    //timer_100_ms->stop();
     Cont_timer_1seg=0;
+    band_run=false;
     if(remaining_time_s==0){
         ui->label_7->setText("Fin");
     }
@@ -274,47 +318,76 @@ void MainWindow::slot_stop()
 
 void MainWindow::slot_manejo_timer_100ms()
 {
-    Cont_timer_1seg++;
-    Cont_request++;
-    if(Cont_timer_1seg>9){//paso 1 segundo
-        //update contadores
-        remaining_time_s--;
-        if(Cont_tarea_actual>0){
-            Cont_tarea_actual--;
-        }
-        Cont_timer_1seg=0;
-        //update display
-        ui->label_7->setText(QString::number(remaining_time_s));
-        //Control timer global
-        if(remaining_time_s==0){
-            slot_stop();
-            LimpiarColor();
-            tabla_clean=true;
-        }
-        //control timer task
-        if(Cont_tarea_actual<=0 && Tarea_actual<(Cont_Items-1)){
-            for(int i=0; i<5;i++){
-                ui->tableWidget->item(Tarea_actual,i)->setBackground(QColor(148, 255, 58));//el gris es 245/245/245
-
+    if(band_run){
+        Cont_timer_1seg++;
+        Cont_request++;
+        if(Cont_timer_1seg>9){//paso 1 segundo
+            //update contadores
+            remaining_time_s--;
+            if(Cont_tarea_actual>0){
+                Cont_tarea_actual--;
             }
-            tabla_clean=false;
-            Tarea_actual++;
-            Iniciar_tarea(Tarea_actual);
+            Cont_timer_1seg=0;
+            //update display
+            ui->label_7->setText(QString::number(remaining_time_s));
+            //Control timer global
+            if(remaining_time_s==0){
+                slot_stop();
+                LimpiarColor();
+                tabla_clean=true;
+            }
+            //control timer task
+            if(Cont_tarea_actual<=0 && Tarea_actual<(Cont_Items-1)){
+                for(int i=0; i<5;i++){
+                    ui->tableWidget->item(Tarea_actual,i)->setBackground(QColor(148, 255, 58));//el gris es 245/245/245
+
+                }
+                tabla_clean=false;
+                Tarea_actual++;
+                Iniciar_tarea(Tarea_actual);
+            }
+
+        }//fin cont 1 seg
+
+        //pedir dato al micro
+        if(Cont_request>5){//cada 500 ms va a pedir datos del micro, el 5 cambia por
+            //pedir dato al micro
+            Cont_request=0;
+        }
+    }//fin if band_run
+    else{
+        if(!disp_detectado){
+            //buscar en los com si esta el dispositivo
+            idPuerto=buscarpuerto(idVendedor,idProducto);
+            if(!idPuerto.isEmpty()){
+                disp_detectado=true;
+                //ui->label_status->setText("Detectado");
+            }
+        }else if(!disp_conectado){
+            abrirUSB(idPuerto);
+            //esperar hasta que el dispositivo ceda el control
+            //activar boton de run en la gui
+            //esto deberia estar en el slot de leer segun el mensaje del micro
+        }else{
+            ui->label_status->setText("Conectado");
+
+            ui->pushButton_run->setEnabled(true);//cambiar al recibir paquetes
+
+            //que espere a que el micro le mande el ok
         }
 
-
-
-
-
-
-        //ya termino la task?
-    }
-
-    //pedir dato al micro
-    if(Cont_request>5){//cada 500 ms va a pedir datos del micro, el 5 cambia por
-        //pedir dato al micro
-        Cont_request=0;
     }
 }
 
+void MainWindow::ErrorUSB()
+{
+    cerrarUSB();
+    disp_detectado=false;
+    disp_conectado=false;
+    slot_stop();
+    ui->pushButton_run->setDisabled(true);
+    ui->label_status->setText("No Detectado");
+    //idPuerto=QString();
+    qDebug()<<"\nERROR\n";
+}
 
