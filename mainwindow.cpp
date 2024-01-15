@@ -11,6 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
     Cont_timer_1seg=0;
     remaining_time_s=0;
     tabla_clean=true;
+    flag_waiting_micro=false;
     Cont_request=0;
 
     PuertoUSB = new QSerialPort(this);
@@ -34,6 +35,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timer_100_ms, &QTimer::timeout, this, &MainWindow::slot_manejo_timer_100ms);
     connect(PuertoUSB, &QSerialPort::errorOccurred, this, &MainWindow::ErrorUSB);
     timer_100_ms->start();
+}
+
+void MainWindow::escribir_en_txt(int tension, int corriente)
+{
+    qDebug()<<"Dato1: "<<tension<<"\nDato2: "<<corriente<<"\n";
 }
 
 void MainWindow::abrirUSB(QString Puerto_com)
@@ -64,7 +70,21 @@ void MainWindow::cerrarUSB()
 void MainWindow::leerDatosSerial()
 {
     QByteArray datos = PuertoUSB->readAll();
+    QString datos_str = QString::fromUtf8(datos);
     qDebug()<<"Input usb: "<<datos;
+    if(datos_str.startsWith("$R")){
+        flag_waiting_micro=false;
+    }
+    else if(datos_str.startsWith("$D")){//puede ser que no quiera guardar los datos
+
+        //seteo en cero algun timer de control
+        if(ui->checkBox_almacenar->isChecked()){//si guardo los datos
+            QStringList listaDatos = datos_str.split(',');
+            escribir_en_txt(listaDatos[1].toInt(),listaDatos[2].toInt());
+        }
+        flag_waiting_micro=false;
+    }
+
 }
 
 void MainWindow::encontrarDispositivoUSB()
@@ -103,7 +123,6 @@ void MainWindow::Iniciar_tarea(int tarea)
     if((uint)tarea<Cont_Items){
         for(int i=0; i<5;i++){
             ui->tableWidget->item(tarea,i)->setBackground(QColor(243, 220, 25));//el gris es 245/245/245
-
         }
         if(ui->tableWidget->item(tarea,4)->text()=="[min]"){
             Cont_tarea_actual=60*ui->tableWidget->item(tarea,3)->text().toInt();// ojo que sea la columna correcta
@@ -112,6 +131,8 @@ void MainWindow::Iniciar_tarea(int tarea)
         }
         tabla_clean=false;
         //enviar config al micro
+        //flag_waiting_micro=true;
+        //$C,Mx,Vxxxx#
     }
 }
 
@@ -350,9 +371,17 @@ void MainWindow::slot_manejo_timer_100ms()
         }//fin cont 1 seg
 
         //pedir dato al micro
-        if(Cont_request>5){//cada 500 ms va a pedir datos del micro, el 5 cambia por
+        if(Cont_request>4){//cada 500 ms va a pedir datos del micro, el 5 cambia por
             //pedir dato al micro
+            QString solicitud = "$Req#";
+            qDebug()<<"solicitud enviada\n";
+
+            if(flag_waiting_micro){
+                qDebug()<<"Error de timeout\n";
+            }
+            PuertoUSB->write(solicitud.toUtf8());
             Cont_request=0;
+            flag_waiting_micro=true;
         }
     }//fin if band_run
     else{

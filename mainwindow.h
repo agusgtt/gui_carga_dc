@@ -28,6 +28,7 @@ public:
     uint Cont_tarea_actual;
     int Selected_row;
     bool tabla_clean;
+    void escribir_en_txt(int tension, int corriente);
 
     //banderas control de flujo
     bool disp_ready;
@@ -36,6 +37,7 @@ public:
     bool band_run;
 
     //com serie
+    bool flag_waiting_micro;
     QSerialPort *PuertoUSB;
     void abrirUSB(QString Puerto_com);
     void cerrarUSB();
@@ -43,6 +45,7 @@ public:
     void encontrarDispositivoUSB();
     QString buscarpuerto(const int idVendedor,const int idProducto);
     QString idPuerto;
+
     //timer
     QTimer *timer_100_ms;
     void Iniciar_tarea(int tarea);
