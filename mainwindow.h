@@ -3,9 +3,11 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QTime>
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QDebug>
+#include <QThread>
 
 #define CC "C.Current"
 #define CP "C.Power"
@@ -28,16 +30,18 @@ public:
     uint Cont_tarea_actual;
     int Selected_row;
     bool tabla_clean;
-    void escribir_en_txt(int tension, int corriente);
-
+    void escribir_en_txt(QString modo, int tension, int corriente);
+    QString formato_h_m_s(uint segundos);
     //banderas control de flujo
     bool disp_ready;
     bool disp_detectado;
     bool disp_conectado;
+    bool flag_usb_ready;
     bool band_run;
 
     //com serie
     bool flag_waiting_micro;
+    bool flag_waiting_micro_conf;
     QSerialPort *PuertoUSB;
     void abrirUSB(QString Puerto_com);
     void cerrarUSB();
