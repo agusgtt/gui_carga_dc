@@ -8,6 +8,9 @@
 #include <QSerialPortInfo>
 #include <QDebug>
 #include <QThread>
+#include <QDateTime>
+#include <QFile>
+#include <QTextStream>
 
 #define CC "C.Current"
 #define CP "C.Power"
@@ -30,8 +33,9 @@ public:
     uint Cont_tarea_actual;
     int Selected_row;
     bool tabla_clean;
-    void escribir_en_txt(QString modo, int tension, int corriente);
+
     QString formato_h_m_s(uint segundos);
+
     //banderas control de flujo
     bool disp_ready;
     bool disp_detectado;
@@ -49,20 +53,27 @@ public:
     void encontrarDispositivoUSB();
     QString buscarpuerto(const int idVendedor,const int idProducto);
     QString idPuerto;
+    const int idVendedor = 1155;
+    const int idProducto = 22336;
 
     //timer
     QTimer *timer_100_ms;
     void Iniciar_tarea(int tarea);
     void LimpiarColor();
-    const int idVendedor = 1155;
-    const int idProducto = 22336;
-
-    //contadores tareas
     uint total_time_s;//acumulador de las tareas
     uint remaining_time_s;//cont global de stop
     uint Cont_timer_1seg;//timer del reloj
     uint Cont_request;//contador para pedir al micro
 
+    //manejo del txt
+    QString generar_nombreArchivo();
+    void generar_archivo();
+    void cerrar_archivo();
+    QFile *archivoActual;
+    QTextStream *streamArchivo;
+    void escribir_en_txt(QString modo, int set_point, int tension, int corriente);
+    bool archivo_abierto;
+    int num_medicion;
     ~MainWindow();
 
 private:

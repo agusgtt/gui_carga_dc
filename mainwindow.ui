@@ -340,7 +340,7 @@
        <item>
         <widget class="QLabel" name="label_7">
          <property name="text">
-          <string>0hh:mm:ss</string>
+          <string>hh:mm:ss</string>
          </property>
         </widget>
        </item>

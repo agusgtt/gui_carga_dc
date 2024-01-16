@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     flag_waiting_micro=false;
     flag_waiting_micro_conf=false;
     Cont_request=0;
+    num_medicion=0;
 
     PuertoUSB = new QSerialPort(this);
     PuertoUSB->setBaudRate(QSerialPort::Baud9600);
@@ -26,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     disp_conectado=false;
     flag_usb_ready=false;
     band_run=false;
+    archivo_abierto=false;
 
     ui->setupUi(this);
     timer_100_ms = new QTimer(this);
@@ -36,9 +38,14 @@ MainWindow::MainWindow(QWidget *parent)
     timer_100_ms->start();
 }
 
-void MainWindow::escribir_en_txt(QString modo,int tension, int corriente)
+void MainWindow::escribir_en_txt(QString modo,int set_point,int tension, int corriente)
 {
-    qDebug()<<"\nModo "<<modo<<"\nDato1: "<<tension<<"\nDato2: "<<corriente<<"\n";
+
+    QString potencia =  QString("%1").arg((float)(corriente*tension)/10000, 0, 'f', 1);
+    *streamArchivo<<num_medicion<<","<<(float)num_medicion/2<<",C"<<modo<<","<<set_point<<",";
+    *streamArchivo<<(float)tension/100<<","<<(float)corriente/100<<",";
+    *streamArchivo<<potencia<<","<<(float)tension/(float)corriente<<"\n";
+    num_medicion++;
 }
 
 QString MainWindow::formato_h_m_s(uint segundos)
@@ -51,6 +58,15 @@ QString MainWindow::formato_h_m_s(uint segundos)
     return QString("%1:%2:%3").arg(horas, 2, 10, QChar('0'))
         .arg(min, 2, 10, QChar('0'))
         .arg(seg, 2, 10, QChar('0'));
+}
+
+QString MainWindow::generar_nombreArchivo()
+{
+    QDateTime dateTime = QDateTime::currentDateTime();
+        // formato fecha y hora AAAAMMDD_HHMMSS
+    QString nombreArchivo = QString("CargaDC_datalog_%1.txt").arg(dateTime.toString("yyyyMMdd_HHmmss"));
+
+    return nombreArchivo;
 }
 
 void MainWindow::abrirUSB(QString Puerto_com)
@@ -99,15 +115,13 @@ void MainWindow::leerDatosSerial()
     else if(datos_str.startsWith("$D")){//puede ser que no quiera guardar los datos
 
         //seteo en cero algun timer de control
-        if(ui->checkBox_almacenar->isChecked()){//si guardo los datos
+        if(archivo_abierto){//si guardo los datos
             QStringList listaDatos = datos_str.split(',');
-            escribir_en_txt(listaDatos[1],listaDatos[2].toInt(),listaDatos[3].toInt());
+            escribir_en_txt(listaDatos[1],listaDatos[2].toInt(),listaDatos[3].toInt(),listaDatos[4].toInt());
         }
     }//fin de los case
 
 }//fin leer
-
-
 
 void MainWindow::encontrarDispositivoUSB()
 {
@@ -196,8 +210,20 @@ void MainWindow::LimpiarColor()
     }
 }
 
+void MainWindow::generar_archivo()
+{
+    archivoActual = new QFile(generar_nombreArchivo());
+    if (archivoActual->open(QIODevice::WriteOnly | QIODevice::Text)) {
+        streamArchivo = new QTextStream(archivoActual);
+        *streamArchivo << "n.medicion,T[s],modo,conf,adc_V[V],adc_C[A],Pot_cal[W],Res_cal[ohm]\n";//formato de columnas
+        archivo_abierto=true;
+        num_medicion=0;
+    }
+}
+
 MainWindow::~MainWindow()
 {
+    cerrar_archivo();
     cerrarUSB();
     timer_100_ms->stop();
     delete timer_100_ms;
@@ -369,6 +395,10 @@ void MainWindow::slot_run()
         Tarea_actual=0;
         Iniciar_tarea(Tarea_actual);
         ui->pushButton_stop->setEnabled(true);
+        if(ui->checkBox_almacenar->isChecked()){
+            generar_archivo();
+        }
+
     }
 
 }
@@ -383,6 +413,9 @@ void MainWindow::slot_stop()
     Cont_timer_1seg=0;
     band_run=false;
     ui->pushButton_stop->setDisabled(true);
+    if(archivo_abierto){
+        cerrar_archivo();
+    }
 }
 
 void MainWindow::slot_manejo_timer_100ms()
@@ -463,5 +496,15 @@ void MainWindow::ErrorUSB()
     //ui->label_status->setText("No Detectado");
     //idPuerto=QString();
     qDebug()<<"\nERROR\n";
+}
+
+void MainWindow::cerrar_archivo()
+{
+    if (archivoActual && archivoActual->isOpen()) {
+        archivoActual->close();
+        delete streamArchivo;
+        delete archivoActual;
+        archivo_abierto = false;
+    }
 }
 
