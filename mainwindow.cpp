@@ -416,6 +416,8 @@ void MainWindow::slot_stop()
     if(archivo_abierto){
         cerrar_archivo();
     }
+    QString solicitud="$C,C,0000#";
+    PuertoUSB->write(solicitud.toUtf8());
 }
 
 void MainWindow::slot_manejo_timer_100ms()
