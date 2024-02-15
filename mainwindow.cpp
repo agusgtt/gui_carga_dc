@@ -85,7 +85,10 @@ void MainWindow::abrirUSB(QString Puerto_com)
 
 void MainWindow::cerrarUSB()
 {
+
     if (PuertoUSB->isOpen()) {
+        //PuertoUSB->write("$DIS");
+        //PuertoUSB->waitForBytesWritten(10000);
         // Desconectar la señal readyRead antes de cerrar el puerto
         disconnect(PuertoUSB, &QSerialPort::readyRead, this, &MainWindow::leerDatosSerial);
 
@@ -111,6 +114,10 @@ void MainWindow::leerDatosSerial()
             flag_usb_ready=false;
             ui->pushButton_run->setDisabled(true);
         }
+    }
+    else if(datos_str.startsWith("$END")){
+        flag_usb_ready=false;
+        ui->pushButton_run->setDisabled(true);
     }
     else if(datos_str.startsWith("$D")){//puede ser que no quiera guardar los datos
 
@@ -172,20 +179,21 @@ void MainWindow::Iniciar_tarea(int tarea)
 
         if(ui->tableWidget->item(tarea,0)->text()=="C.Current"){
             //modo="C";
-            valor = 100*ui->tableWidget->item(tarea,1)->text().toInt();
+            valor = 100*ui->tableWidget->item(tarea,1)->text().toFloat();
+            //valor = 100*ui->tableWidget->item(tarea,1)->text().toInt();
             solicitud="$C,C,";
         }else if(ui->tableWidget->item(tarea,0)->text()=="C.Power"){
             //modo="P";
-            valor = 10*ui->tableWidget->item(tarea,1)->text().toInt();
+            valor = 10*ui->tableWidget->item(tarea,1)->text().toFloat();
             solicitud="$C,P,";
         }else if(ui->tableWidget->item(tarea,0)->text()=="C.Resist."){
             //modo="R";
-            valor = ui->tableWidget->item(tarea,1)->text().toInt();
+            valor = ui->tableWidget->item(tarea,1)->text().toFloat();
             solicitud="$C,R,";
         }
         tabla_clean=false;
 
-        str_aux = QString("%1").arg(valor, 4, 10, QLatin1Char('0'));
+        str_aux = QString("%1").arg((int)valor, 4, 10, QLatin1Char('0'));
         solicitud+=str_aux;
         solicitud+="#";
         PuertoUSB->write(solicitud.toUtf8());
@@ -223,8 +231,11 @@ void MainWindow::generar_archivo()
 
 MainWindow::~MainWindow()
 {
-    cerrar_archivo();
+    PuertoUSB->write("$DIS");
+    PuertoUSB->waitForBytesWritten(10000);
     cerrarUSB();
+    qDebug() << "Destructor de MainWindow llamado";
+    cerrar_archivo();
     timer_100_ms->stop();
     delete timer_100_ms;
     delete ui;
@@ -367,6 +378,7 @@ int selectedRow = ui->tableWidget->currentRow();
 
 void MainWindow::slot_delete_all()
 {
+
     while(Cont_Items>0){
         Cont_Items--;
         ui->tableWidget->removeRow(Cont_Items);
@@ -416,8 +428,8 @@ void MainWindow::slot_stop()
     if(archivo_abierto){
         cerrar_archivo();
     }
-    QString solicitud="$C,C,0000#";
-    PuertoUSB->write(solicitud.toUtf8());
+    //QString solicitud="$C,C,0000#";
+    //PuertoUSB->write(solicitud.toUtf8());
 }
 
 void MainWindow::slot_manejo_timer_100ms()
@@ -436,6 +448,8 @@ void MainWindow::slot_manejo_timer_100ms()
             //ui->label_7->setText(QString::number(remaining_time_s));//update display
             if(remaining_time_s==0){
                 slot_stop();
+                QString solicitud="$C,C,0000#";//esto estaba dentro de stop
+                PuertoUSB->write(solicitud.toUtf8());
                 LimpiarColor();
                 ui->label_7->setText("Fin");
                 tabla_clean=true;
